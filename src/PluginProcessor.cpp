@@ -13,7 +13,7 @@ MidiMarkovProcessor::MidiMarkovProcessor()
 #endif
     )
 #endif
-    , markovModel{},  elapsedSamples{ 0 } //learningMode{ true } noteDurationModel {}, lastNoteOnTime{ 0 }, modelPlayNoteTime{ 0 },
+    , markovModel{}, elapsedSamples{ 0 }, chordDetect{ 100 }, learningMode{ true }, modelPlayNoteTime{ 0 }, lastNoteOnTime{ 0 }, noteDurationModel{}
 {
     for (auto i = 0; i < 127; ++i) {
         noteOffTimes[i] = 0;
@@ -95,7 +95,9 @@ void MidiMarkovProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
     // maxinterval properly on the chord detector
     // 0.5ms seems to be about right
     double maxIntervalInSamples = sampleRate * 0.05; // 50ms
+    chordDetect = ChordDetector((unsigned long)maxIntervalInSamples);
     //std::cout << "Max interval in samples " << maxIntervalInSamples << " or " << (maxIntervalInSamples * 96000 * 1000) << "ms";
+
 }
 
 void MidiMarkovProcessor::releaseResources()
@@ -132,52 +134,107 @@ bool MidiMarkovProcessor::isBusesLayoutSupported(const BusesLayout& layouts) con
 
 void MidiMarkovProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
-    
+    DBG("ElapsedSamples" << elapsedSamples);
+    addUIMessageToBuffer(midiMessages);
 
-    if (midiToProcess.getNumEvents() > 0) {
-        midiMessages.addEvents(midiToProcess, midiToProcess.getFirstEventTime(), midiToProcess.getLastEventTime() + 1, 0);
-        midiToProcess.clear();
-    }
 
-    /*for (const auto metadata : midiMessages) {
-        auto message = metadata.getMessage();
-        if (message.isNoteOn()) {
-            std::cout << "note "
-                << message.getNoteNumber()
-                << " ts: "
-                << message.getTimeStamp()
-                << std::endl;
-        }
-    }*/
-    // temporary midi buffer 
     juce::MidiBuffer generatedMessages{};
+
+    /*if (isTimeToPlayNote()) {
+        playNotesFromModel(generatedMessages);
+        updateTimeForNextPlay();
+    }*/
+
     for (const auto metadata : midiMessages) {
         auto message = metadata.getMessage();
-        if (message.isNoteOn()) {
+        if (message.isNoteOff()) {
+            DBG("MIDI note off-learn duration");
+            learnDuration(message);
 
-            markovModel.putEvent(std::to_string(message.getNoteNumber()));
-            int note = std::stoi(markovModel.getEvent());
-            juce::MidiMessage nOn = juce::MidiMessage::noteOn(1, note, 0.5f);
-            generatedMessages.addEvent(nOn, message.getTimeStamp());
-            DBG("Markov model: " << markovModel.getModelAsString());
+            /*DBG("n:" << message.getNoteNumber()
+                << "lasted "
+                << );*/
 
-            juce::MidiMessage nOff = juce::MidiMessage::noteOff(1, note, 0.5f);
-            generatedMessages.addEvent(nOff, message.getTimeStamp() + getSampleRate() / 2);
-            
-            //chordDetect.addNote(
-            //    message.getNoteNumber(),
-            //    // add the offset within this buffer
-            //    elapsedSamples + message.getTimeStamp()
-            //);
-            //if (chordDetect.hasChord()) {
-            //    std::string notes =
-            //        MidiMarkovProcessor::notesToMarkovState(
-            //            chordDetect.getChord()
-            //        );
-            //    markovModel.putEvent(notes);
-            //}
         }
+
+
+        if (message.isNoteOn()) {
+            DBG("MIDI note on");
+            noteOnTimes[message.getNoteNumber()] = elapsedSamples;
+            chordDetect.addNote(message.getNoteNumber(), elapsedSamples + message.getTimeStamp());
+
+
+
+            noteOffTimes[message.getNoteNumber()] = elapsedSamples + message.getTimeStamp();
+
+
+            learnNotes();
+
+            playNotesFromModel(generatedMessages);
+
+
+        }
+
     }
+
+    
+    addNoteOffs(generatedMessages);
+
+    midiMessages.clear();
+    midiMessages.addEvents(generatedMessages, generatedMessages.getFirstEventTime(), -1, 0);
+    elapsedSamples += buffer.getNumSamples();
+    //SEPARACION
+
+
+
+    //// temporary midi buffer 
+    //juce::MidiBuffer generatedMessages{};
+    //for (const auto metadata : midiMessages) {
+    //    auto message = metadata.getMessage();
+    //    if (message.isNoteOn()) {
+
+    //        DBG("note "
+    //            << message.getNoteNumber()
+    //            << " ts: "
+    //            << message.getTimeStamp());
+
+    //        markovModel.putEvent(std::to_string(message.getNoteNumber()));
+    //        int note = std::stoi(markovModel.getEvent());
+    //        juce::MidiMessage nOn = juce::MidiMessage::noteOn(1, note, 0.5f);
+    //        generatedMessages.addEvent(nOn, message.getTimeStamp());
+    //        DBG("Markov model: " << markovModel.getModelAsString());
+
+    //        juce::MidiMessage nOff = juce::MidiMessage::noteOff(1, note, 0.5f);
+    //        generatedMessages.addEvent(nOff, message.getTimeStamp() + getSampleRate() / 2);
+    //        
+    //    }
+    //}
+
+    //if (midiToProcess.getNumEvents() > 0) {
+    //    midiMessages.addEvents(midiToProcess, midiToProcess.getFirstEventTime(), midiToProcess.getLastEventTime() + 1, 0);
+    //    midiToProcess.clear();
+    //}
+
+    //juce::MidiBuffer generatedMessages{};
+    //for (const auto metadata : midiMessages) {
+    //    auto message = metadata.getMessage();
+    //    if (message.isNoteOn()) {
+    //        chordDetect.addNote(
+    //            message.getNoteNumber(),
+    //            // add the offset within this buffer
+    //            elapsedSamples + message.getTimeStamp()
+    //        );
+    //        if (chordDetect.hasChord()) {
+    //            std::string notes =
+    //                MidiMarkovProcessor::notesToMarkovState(
+    //                    chordDetect.getChord()
+    //                );
+    //            markovModel.putEvent(notes);
+    //        }
+
+    //    }
+    //}
+
     //if (chordDetect.hasChord()) {
     //    std::string notes = markovModel.getEvent();
     //    for (const int& note : markovStateToNotes(notes)) {
@@ -188,60 +245,22 @@ void MidiMarkovProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::M
     //    }
     //}
 
-    // process pending note offs
-   /* for (auto i = 0; i < 127; ++i) {
-        if (noteOffTimes[i] > 0 &&
-            noteOffTimes[i] < elapsedSamples) {
-            juce::MidiMessage nOff = juce::MidiMessage::noteOff(1, i, 0.0f);
-            generatedMessages.addEvent(nOff, 0);
-            noteOffTimes[i] = 0;
-        }
-    }*/
-    midiMessages.clear();
-    midiMessages.addEvents(generatedMessages, generatedMessages.getFirstEventTime(), -1, 0);
-    elapsedSamples += buffer.getNumSamples();
-//}
 
-
-
-    //addUIMessageToBuffer(midiMessages);
-
-    //// temporary midi buffer 
-    //juce::MidiBuffer generatedMessages{};
-
-    //if (isTimeToPlayNote()) {
-    //    playNotesFromModel(generatedMessages);
-    //    updateTimeForNextPlay();
-    //}
-
-
-    //for (const auto metadata : midiMessages) {
-    //    auto message = metadata.getMessage();
-    //    if (message.isNoteOff()) {
-    //        learnDuration(message);
-    //    }
-    //    if (message.isNoteOn()) {
-    //        std::cout << "note "
-    //            << message.getNoteNumber()
-    //            << " ts: "
-    //            << message.getTimeStamp()
-    //            << std::endl;
-
-    //        // remember note on time for duration model 
-    //        noteOnTimes[message.getNoteNumber()] = elapsedSamples + message.getTimeStamp();
-
-    //    
-
+    //// process pending note offs
+    //for (auto i = 0; i < 127; ++i) {
+    //    if (noteOffTimes[i] > 0 &&
+    //        noteOffTimes[i] < elapsedSamples) {
+    //        juce::MidiMessage nOff = juce::MidiMessage::noteOff(1, i, 0.0f);
+    //        generatedMessages.addEvent(nOff, 0);
+    //        noteOffTimes[i] = 0;
     //    }
     //}
-
-    //addNoteOffs(generatedMessages);
 
     //midiMessages.clear();
     //midiMessages.addEvents(generatedMessages, generatedMessages.getFirstEventTime(), -1, 0);
     //elapsedSamples += buffer.getNumSamples();
-    //// initialise the modelPlayNoteTime if necessary
-    ////if (modelPlayNoteTime == 0) {modelPlayNoteTime = elapsedSamples + getSampleRate();}
+    ////}
+
 }
 
 //==============================================================================
@@ -302,94 +321,104 @@ std::vector<int> MidiMarkovProcessor::markovStateToNotes(const std::string& note
     return notes;
 }
 
-//void MidiMarkovProcessor::resetModel()
-//{
-//    markovModel.reset();
-//    noteDurationModel.reset();
-//    for (auto i = 0; i < 127; ++i) {
-//        noteOffTimes[i] = 0;
-//        noteOnTimes[i] = 0;
-//    }
-//}
+void MidiMarkovProcessor::resetModel()
+{
+    markovModel.reset();
+    noteDurationModel.reset();
+    for (auto i = 0; i < 127; ++i) {
+        noteOffTimes[i] = 0;
+        noteOnTimes[i] = 0;
+    }
+}
 
-//bool MidiMarkovProcessor::isLearning()
-//{
-//    return learningMode;
-//}
-//void MidiMarkovProcessor::stopLearning()
-//{
-//    learningMode = false;
-//}
-//void MidiMarkovProcessor::startLearning()
-//{
-//    learningMode = true;
-//}
+bool MidiMarkovProcessor::isLearning()
+{
+    return learningMode;
+}
+void MidiMarkovProcessor::stopLearning()
+{
+    learningMode = false;
+}
+void MidiMarkovProcessor::startLearning()
+{
+    learningMode = true;
+}
 
-//bool MidiMarkovProcessor::isTimeToPlayNote()
-//{
-//    if (modelPlayNoteTime == 0) {
-//        modelPlayNoteTime = elapsedSamples;
-//        return false;
-//    }
-//    else { return elapsedSamples > modelPlayNoteTime; }
-//}
+bool MidiMarkovProcessor::isTimeToPlayNote()
+{
+    if (modelPlayNoteTime == 0) {
+        modelPlayNoteTime = elapsedSamples;
+        return false;
+    }
+    else { return elapsedSamples > modelPlayNoteTime; }
+}
 
 
 //// modular functions for processblock
 
-//void MidiMarkovProcessor::addUIMessageToBuffer(juce::MidiBuffer& midiMessages)
-//{
-//    if (midiToProcess.getNumEvents() > 0) {
-//        midiMessages.addEvents(midiToProcess, midiToProcess.getFirstEventTime(), midiToProcess.getLastEventTime() + 1, 0);
-//        midiToProcess.clear();
-//    }
-//}
-//
-//void MidiMarkovProcessor::learnDuration(juce::MidiMessage& noteOffMessage)
-//{
-//    if (learningMode && noteOffMessage.isNoteOff()) {
-//        unsigned long noteLength =
-//            elapsedSamples - noteOnTimes[noteOffMessage.getNoteNumber()];
-//
-//        noteDurationModel.putEvent(std::to_string(noteLength));
-//    }
-//}
-//
-//void MidiMarkovProcessor::playNotesFromModel(juce::MidiBuffer& midiMessages)
-//{
-//        std::string notes = markovModel.getEvent(true);
-//
-//        unsigned int duration = std::stoi(noteDurationModel.getEvent(true));
-//
-//        for (const int& note : markovStateToNotes(notes)) {
-//            juce::MidiMessage nOn = juce::MidiMessage::noteOn(1, note, 0.8f);
-//            midiMessages.addEvent(nOn, 0);
-//            // remember to note off later
-//            noteOffTimes[note] = elapsedSamples + duration;
-//        }
-//
-//}
-//
-//void MidiMarkovProcessor::addNoteOffs(juce::MidiBuffer& midiMessages)
-//{
-//    // process pending note offs
-//    for (auto i = 0; i < 127; ++i) {
-//        if (noteOffTimes[i] > 0 &&
-//            noteOffTimes[i] < elapsedSamples) {
-//            juce::MidiMessage nOff = juce::MidiMessage::noteOff(1, i, 0.0f);
-//            midiMessages.addEvent(nOff, 0);
-//            noteOffTimes[i] = 0;
-//        }
-//    }
-//}
-//
-//
-//void MidiMarkovProcessor::updateTimeForNextPlay()
-//{
-//    // select the next time to play a note
-//    //modelPlayNoteTime = std::stoul(iOIModel.getEvent(true));
-//    modelPlayNoteTime += elapsedSamples;
-//}
+void MidiMarkovProcessor::addUIMessageToBuffer(juce::MidiBuffer& midiMessages)
+{
+    if (midiToProcess.getNumEvents() > 0) {
+        midiMessages.addEvents(midiToProcess, midiToProcess.getFirstEventTime(), midiToProcess.getLastEventTime() + 1, 0);
+        midiToProcess.clear();
+    }
+}
+
+void MidiMarkovProcessor::learnNotes() {
+    if (learningMode) {
+        if (chordDetect.hasChord()) {
+            std::string notes = MidiMarkovProcessor::notesToMarkovState(chordDetect.getChord());
+            markovModel.putEvent(notes);
+        }
+    }
+}
+
+void MidiMarkovProcessor::learnDuration(juce::MidiMessage& noteOffMessage)
+{
+    if (learningMode && noteOffMessage.isNoteOff()) {
+        unsigned long noteLength =
+            elapsedSamples - noteOnTimes[noteOffMessage.getNoteNumber()];
+
+        noteDurationModel.putEvent(std::to_string(noteLength));
+    }
+}
+
+void MidiMarkovProcessor::playNotesFromModel(juce::MidiBuffer& midiMessages)
+{
+    if (chordDetect.hasChord()) {
+        std::string notes = markovModel.getEvent(true);
+
+        unsigned int duration = std::stoi(noteDurationModel.getEvent(true));
+
+        for (const int& note : markovStateToNotes(notes)) {
+            DBG("MIDI note on se manda");
+            juce::MidiMessage nOn = juce::MidiMessage::noteOn(1, note, 0.8f);
+            midiMessages.addEvent(nOn, 0);
+            
+            // remember to note off later
+            noteOffTimes[note] = elapsedSamples + duration;
+        }
+
+    }
+}
+
+void MidiMarkovProcessor::addNoteOffs(juce::MidiBuffer& midiMessages)
+{
+    // process pending note offs
+    for (auto i = 0; i < 127; ++i) {
+        if (noteOffTimes[i] > 0 &&
+            noteOffTimes[i] < elapsedSamples) {
+            juce::MidiMessage nOff = juce::MidiMessage::noteOff(1, i, 0.0f);
+            midiMessages.addEvent(nOff, 0);
+            noteOffTimes[i] = 0;
+        }
+    }
+}
 
 
-
+void MidiMarkovProcessor::updateTimeForNextPlay()
+{
+    // select the next time to play a note
+    //modelPlayNoteTime = std::stoul(iOIModel.getEvent(true));
+    modelPlayNoteTime += elapsedSamples;
+}

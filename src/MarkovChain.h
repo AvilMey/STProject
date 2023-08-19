@@ -22,7 +22,7 @@ class MarkovChain {
 public:
 	//Constructor
 	//Takes as opcional argument _maxOrder
-	MarkovChain(unsigned long _maxOrder = 2);
+	MarkovChain(unsigned long _maxOrder = 4);
 	~MarkovChain();
 
 	//Definition of function for MarkovChain

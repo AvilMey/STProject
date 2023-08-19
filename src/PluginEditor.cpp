@@ -16,13 +16,13 @@ MidiMarkovEditor::MidiMarkovEditor(MidiMarkovProcessor& p) : AudioProcessorEdito
     kbdState.addListener(this);
     addAndMakeVisible(miniPianoKbd);
 
-    /*resetButton.setButtonText("Reset model");
+    resetButton.setButtonText("Reset model");
     addAndMakeVisible(resetButton);
     resetButton.addListener(this);
 
     isLearningButton.setButtonText("Machine is learning");
     addAndMakeVisible(isLearningButton);
-    isLearningButton.addListener(this);*/
+    isLearningButton.addListener(this);
 }
 
 MidiMarkovEditor::~MidiMarkovEditor()
@@ -52,9 +52,9 @@ void MidiMarkovEditor::resized()
 
     miniPianoKbd.setBounds(0, rowHeight * row, getWidth(), rowHeight);
     row++;
-    /*resetButton.setBounds(0, rowHeight * row, colWidth, rowHeight);
+    resetButton.setBounds(0, rowHeight * row, colWidth, rowHeight);
     col++;
-    isLearningButton.setBounds(col * colWidth, rowHeight * row, colWidth, rowHeight);*/
+    isLearningButton.setBounds(col * colWidth, rowHeight * row, colWidth, rowHeight);
 
 }
 
@@ -65,21 +65,21 @@ void MidiMarkovEditor::sliderValueChanged(juce::Slider* slider)
 
 void MidiMarkovEditor::buttonClicked(juce::Button* btn)
 {
-    //if (btn == &resetButton) {
-    //    this->audioProcessor.resetModel();
-    //}
-    //if (btn == &isLearningButton) {
-    //    // if processor is learning, set to 'is not learning'
-    //    if (this->audioProcessor.isLearning()) {
-    //        this->audioProcessor.stopLearning();
-    //        // make the button off
-    //        isLearningButton.setButtonText("Not learning");
-    //    }
-    //    else {
-    //        this->audioProcessor.startLearning();
-    //        isLearningButton.setButtonText("Machine is learning");
-    //    }
-    //}
+    if (btn == &resetButton) {
+        this->audioProcessor.resetModel();
+    }
+    if (btn == &isLearningButton) {
+        // if processor is learning, set to 'is not learning'
+        if (this->audioProcessor.isLearning()) {
+            this->audioProcessor.stopLearning();
+            // make the button off
+            isLearningButton.setButtonText("Not learning");
+        }
+        else {
+            this->audioProcessor.startLearning();
+            isLearningButton.setButtonText("Machine is learning");
+        }
+    }
 }
 
 void MidiMarkovEditor::handleNoteOn(juce::MidiKeyboardState* source, int midiChannel, int midiNoteNumber, float velocity)

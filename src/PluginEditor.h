@@ -39,8 +39,8 @@ private:
     // needed for the mini piano keyboard
     juce::MidiKeyboardState kbdState;
     juce::MidiKeyboardComponent miniPianoKbd;
-    /*juce::TextButton resetButton;
-    juce::TextButton isLearningButton;*/
+    juce::TextButton resetButton;
+    juce::TextButton isLearningButton;
 
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.

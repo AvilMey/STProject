@@ -2,6 +2,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "MarkovManager.h"
+#include "ChordDetector.h"
 
 
 class MidiMarkovProcessor : public juce::AudioProcessor
@@ -54,44 +55,45 @@ public:
     // * @brief reset the markov model
     // *
     // */
-    //void resetModel();
-    //// check if the markov model is learning from incoming midi
-    //bool isLearning();
-    //// stop the markov model from learning from incoming MIDI
-    //void stopLearning();
-    //// start the markov model learning from incoming MIDI
-    //void startLearning();
+    void resetModel();
+    // check if the markov model is learning from incoming midi
+    bool isLearning();
+    // stop the markov model from learning from incoming MIDI
+    void stopLearning();
+    // start the markov model learning from incoming MIDI
+    void startLearning();
 
 private:
 
     MarkovManager markovModel;
-    //MarkovManager noteDurationModel;
-    //bool learningMode;
+    MarkovManager noteDurationModel;
+    bool learningMode;
 
     /** stores messages added from the addMidi function*/
     juce::MidiBuffer midiToProcess;
+    ChordDetector chordDetect;
     unsigned long noteOffTimes[127];
     unsigned long noteOnTimes[127];
-    //unsigned long lastNoteOnTime;
-    //unsigned long modelPlayNoteTime;
+    unsigned long lastNoteOnTime;
+    unsigned long modelPlayNoteTime;
     unsigned long elapsedSamples;
 
-    //// a set of functions to modularise the processBlock function
-    //void addUIMessageToBuffer(juce::MidiBuffer& midiMessages);
-    //// query the pitch and duration models and put somo midi notes into the sent buffer
-    //void playNotesFromModel(juce::MidiBuffer& noteBuffer);
-    //// adds note off messages to the sent buffer, if needed based on noteOffTimes and elapsedSamples
-    //void addNoteOffs(juce::MidiBuffer& midiMessages);
-    //// add the notes stored in the chord detector to the model 
-    ////void learnNotes();
-    //// compute the duration of the sent message (based on noteOnTimes)
-    //// and add it to the duration model
-    //void learnDuration(juce::MidiMessage& noteOffMessage);
-    //// returns true if elapsedTime > modelPlayNoteTime 
-    //bool isTimeToPlayNote();
-    //// select next modelPlayNoteTime by querying the IOI model 
-    //void updateTimeForNextPlay();
-    //// end of processBlock modular functions
+    // a set of functions to modularise the processBlock function
+    void addUIMessageToBuffer(juce::MidiBuffer& midiMessages);
+    // query the pitch and duration models and put somo midi notes into the sent buffer
+    void playNotesFromModel(juce::MidiBuffer& noteBuffer);
+    // adds note off messages to the sent buffer, if needed based on noteOffTimes and elapsedSamples
+    void addNoteOffs(juce::MidiBuffer& midiMessages);
+    // add the notes stored in the chord detector to the model 
+    void learnNotes();
+    // compute the duration of the sent message (based on noteOnTimes)
+    // and add it to the duration model
+    void learnDuration(juce::MidiMessage& noteOffMessage);
+    // returns true if elapsedTime > modelPlayNoteTime 
+    bool isTimeToPlayNote();
+    // select next modelPlayNoteTime by querying the IOI model 
+    void updateTimeForNextPlay();
+    // end of processBlock modular functions
 
     /**
      * @brief converts a vector of midi note values to a single string representation

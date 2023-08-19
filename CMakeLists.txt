@@ -3,7 +3,7 @@
 #
 cmake_minimum_required (VERSION 3.8)
 
-project (STProject VERSION 0.0.1)
+project (STProject VERSION 0.0.2)
 
 set (CMAKE_CXX_STANDARD 14)
 
@@ -14,6 +14,10 @@ add_library(markov-lib "src/MarkovManager.cpp"  "src/MarkovChain.cpp")
 add_executable (markov-ex "src/MarkovManager.cpp"  "src/Pruebas.cpp"  )
 
 target_link_libraries(markov-ex  markov-lib)
+
+# tests for chord detect
+add_executable(chord-tests  "src/ChordDetector.cpp" "src/ChordDetectTest.cpp")
+
 
 add_subdirectory(.. /JUCE)   
 
@@ -39,6 +43,7 @@ juce_add_plugin(markov-plugin
     src/PluginProcessor.cpp
     src/MarkovManager.cpp  
     src/MarkovChain.cpp
+    src/ChordDetector.cpp
    )
 
    target_compile_definitions(markov-plugin

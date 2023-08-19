@@ -17,7 +17,7 @@ public:
      * remember. Chain events are remembered so we can delete or amplify parts of the chain
      * using givePositive and giveNegative feedback.
      */
-    MarkovManager(unsigned long maxOrder = 2, unsigned long chainEventMemoryLength = 20);
+    MarkovManager(unsigned long maxOrder = 4, unsigned long chainEventMemoryLength = 20);
     ~MarkovManager();
     /** add an event to the chain. The manager manages previous events to ensure
      * that variable orders are passed to the underlying markov model
