@@ -98,6 +98,121 @@ void MidiMarkovProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
     chordDetect = ChordDetector((unsigned long)maxIntervalInSamples);
     //std::cout << "Max interval in samples " << maxIntervalInSamples << " or " << (maxIntervalInSamples * 96000 * 1000) << "ms";
 
+    /*juce::dsp::ProcessSpec spec;
+
+    spec.maximumBlockSize = samplesPerBlock;
+
+    spec.numChannels = 1;
+
+    spec.sampleRate = sampleRate;
+
+    leftChain.prepare(spec);
+    rightChain.prepare(spec);
+
+    auto chainSettings = getChainSettings(apvts);
+
+    auto cutCoefficients = juce::dsp::FilterDesign<float>::designIIRHighpassHighOrderButterworthMethod(chainSettings.lowCutFreq, 
+                                                                                                        getSampleRate(),
+                                                                                                        2*(chainSettings.lowCutSlope + 1));
+    auto& leftLowCut = leftChain.get<ChainPositions::LowCut>();
+
+    leftLowCut.setBypassed<0>(true);
+    leftLowCut.setBypassed<1>(true);
+    leftLowCut.setBypassed<2>(true);
+    leftLowCut.setBypassed<3>(true);
+
+    switch (ChainSettings.lowCutSlope)
+    {
+    case Slope_12:
+    {
+        *leftLowCut.get<0>().coefficients = cutCoefficients[0];
+        leftLowCut.setBypassed<0>(false);
+        break;
+    }
+        
+    case Slope_24:
+    {
+        *leftLowCut.get<0>().coefficients = cutCoefficients[0];
+        leftLowCut.setBypassed<0>(false);
+        *leftLowCut.get<1>().coefficients = cutCoefficients[1];
+        leftLowCut.setBypassed<1>(false);
+        break;
+    }
+    case Slope_36:
+    {
+        *leftLowCut.get<0>().coefficients = cutCoefficients[0];
+        leftLowCut.setBypassed<0>(false);
+        *leftLowCut.get<1>().coefficients = cutCoefficients[1];
+        leftLowCut.setBypassed<1>(false);
+        *leftLowCut.get<2>().coefficients = cutCoefficients[2];
+        leftLowCut.setBypassed<2>(false);
+        break;
+    }
+    case Slope_48:
+    {
+        *leftLowCut.get<0>().coefficients = cutCoefficients[0];
+        leftLowCut.setBypassed<0>(false);
+        *leftLowCut.get<1>().coefficients = cutCoefficients[1];
+        leftLowCut.setBypassed<1>(false);
+        *leftLowCut.get<2>().coefficients = cutCoefficients[2];
+        leftLowCut.setBypassed<2>(false);
+        *leftLowCut.get<3>().coefficients = cutCoefficients[3];
+        leftLowCut.setBypassed<3>(false);
+        break;
+    }
+
+    }
+
+    auto& rightLowCut = rightChain.get<ChainPositions::LowCut>();
+
+    rightLowCut.setBypassed<0>(true);
+    rightLowCut.setBypassed<1>(true);
+    rightLowCut.setBypassed<2>(true);
+    rightLowCut.setBypassed<3>(true);
+
+    switch (chainSettings.lowCutSlope)
+    {
+    case Slope_12:
+    {
+        *rightLowCut.get<0>().coefficients = cutCoefficients[0];
+        rightLowCut.setBypassed<0>(false);
+        break;
+    }
+
+    case Slope_24:
+    {
+        *rightLowCut.get<0>().coefficients = cutCoefficients[0];
+        rightLowCut.setBypassed<0>(false);
+        *rightLowCut.get<1>().coefficients = cutCoefficients[1];
+        rightLowCut.setBypassed<1>(false);
+        break;
+    }
+    case Slope_36:
+    {
+        *rightLowCut.get<0>().coefficients = cutCoefficients[0];
+        rightLowCut.setBypassed<0>(false);
+        *rightLowCut.get<1>().coefficients = cutCoefficients[1];
+        rightLowCut.setBypassed<1>(false);
+        *rightLowCut.get<2>().coefficients = cutCoefficients[2];
+        rightLowCut.setBypassed<2>(false);
+        break;
+    }
+    case Slope_48:
+    {
+        *rightLowCut.get<0>().coefficients = cutCoefficients[0];
+        rightLowCut.setBypassed<0>(false);
+        *rightLowCut.get<1>().coefficients = cutCoefficients[1];
+        rightLowCut.setBypassed<1>(false);
+        *rightLowCut.get<2>().coefficients = cutCoefficients[2];
+        rightLowCut.setBypassed<2>(false);
+        *rightLowCut.get<3>().coefficients = cutCoefficients[3];
+        rightLowCut.setBypassed<3>(false);
+        break;
+    }
+
+    }*/
+
+
 }
 
 void MidiMarkovProcessor::releaseResources()
@@ -134,6 +249,8 @@ bool MidiMarkovProcessor::isBusesLayoutSupported(const BusesLayout& layouts) con
 
 void MidiMarkovProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
+    //auto chainSettings = getChainSettings(apvts);
+
     DBG("ElapsedSamples" << elapsedSamples);
     addUIMessageToBuffer(midiMessages);
 
@@ -144,6 +261,22 @@ void MidiMarkovProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::M
         playNotesFromModel(generatedMessages);
         updateTimeForNextPlay();
     }*/
+
+    //Newstuff
+
+    /*juce::dsp::AudioBlock<float> block(buffer);
+
+    auto leftBlock = block.getSingleChannelBlock(0);
+    auto rightBlock = block.getSingleChannelBlock(1);
+
+    juce::dsp::ProcessContextReplacing<float> leftContext(leftBlock);
+    juce::dsp::ProcessContextReplacing<float> rightContext(rightBlock);
+
+    leftChain.process(leftContext);
+    rightChain.process(rightContext);*/
+
+    //Finishes new stuff
+
 
     for (const auto metadata : midiMessages) {
         auto message = metadata.getMessage();
@@ -183,6 +316,9 @@ void MidiMarkovProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::M
     midiMessages.clear();
     midiMessages.addEvents(generatedMessages, generatedMessages.getFirstEventTime(), -1, 0);
     elapsedSamples += buffer.getNumSamples();
+
+    
+
     //SEPARACION
 
 
@@ -270,8 +406,9 @@ bool MidiMarkovProcessor::hasEditor() const
 }
 
 juce::AudioProcessorEditor* MidiMarkovProcessor::createEditor()
-{
+{   //
     return new MidiMarkovEditor(*this);
+    //return new juce::GenericAudioProcessorEditor(*this);
 }
 
 //==============================================================================
@@ -280,13 +417,60 @@ void MidiMarkovProcessor::getStateInformation(juce::MemoryBlock& destData)
     // You should use this method to store your parameters in the memory block.
     // You could do that either as raw data, or use the XML or ValueTree classes
     // as intermediaries to make it easy to save and load complex data.
+   
+
 }
 
 void MidiMarkovProcessor::setStateInformation(const void* data, int sizeInBytes)
 {
     // You should use this method to restore your parameters from this memory block,
     // whose contents will have been created by the getStateInformation() call.
+   
 }
+
+//ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& apvts)
+//{
+//    ChainSettings settings;
+//
+//    settings.lowCutFreq = apvts.getRawParameterValue("LowCutFilter")->load();
+//    settings.highCutFreq = apvts.getRawParameterValue("HighCutFilter")->load();
+//    settings.lowCutSlope = static_cast<Slope>(apvts.getRawParameterValue("LowCut Slope")->load());
+//    settings.highCutSlope = static_cast<Slope>(apvts.getRawParameterValue("HighCut Slope")->load());
+//
+//    return settings;
+//}
+
+//juce::AudioProcessorValueTreeState::ParameterLayout MidiMarkovProcessor::createParameterLayout() 
+//{
+//    //We'll have a low pas filter and a high pass filter
+//    //LowCut parameters
+//    juce::AudioProcessorValueTreeState::ParameterLayout layout;
+//    layout.add(std::make_unique<juce::AudioParameterFloat>("LowCutFilter", 
+//                                                           "LowCutFilter", 
+//                                                            juce::NormalisableRange<float>(20.f, 20000.f, 1.f, 0.25f),
+//                                                            20.f));
+//
+//    //HighCut parametes
+//    layout.add(std::make_unique<juce::AudioParameterFloat>("HighCutFilter",
+//                                                           "HighCutFilter",
+//                                                            juce::NormalisableRange<float>(20.f, 20000.f, 1.f, 0.25f),
+//                                                            20000.f));
+//
+//    juce::StringArray stringArray;
+//    for (int i = 0; i < 4; ++i) {
+//        juce::String str;
+//        str << (12 + i * 12);
+//        str << " db/Oct";
+//        stringArray.add(str);
+//    }
+//
+//    layout.add(std::make_unique<juce::AudioParameterChoice>("LowCut Slope", "LowCut Slope", stringArray, 0));
+//    layout.add(std::make_unique<juce::AudioParameterChoice>("HighCut Slope", "HighCut Slope", stringArray, 0));
+//
+//
+//    return layout;
+//
+//}
 
 //==============================================================================
 // This creates new instances of the plugin..

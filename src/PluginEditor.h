@@ -5,6 +5,7 @@
 #include <juce_audio_utils/juce_audio_utils.h>
 
 
+
 //==============================================================================
 /**
 */
@@ -22,7 +23,7 @@ public:
     ~MidiMarkovEditor() override;
 
     //==============================================================================
-    void paint(juce::Graphics&) override;
+    void paint(juce::Graphics& g) override;
     void resized() override;
 
     void sliderValueChanged(juce::Slider* slider) override;

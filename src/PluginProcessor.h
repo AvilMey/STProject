@@ -1,8 +1,38 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
+//#include <juce_audio_processors/utilities/juce_AudioProcessorValueTreeState.h>
+//#include <juce_audio_processors/utilities/ juce_AudioParameterFloat.h>
+//#include <juce_dsp/juce_dsp.h>
 #include "MarkovManager.h"
 #include "ChordDetector.h"
+
+
+//enum ChainPositions
+//{
+//    LowCut,
+//    HighCut
+//};
+//
+//enum Slope {
+//    Slope_12,
+//    Slope_24,
+//    Slope_36,
+//    Slope_48
+//};
+//
+//struct ChainSettings
+//{
+//    float lowCutFreq{ 0 }, highCutFreq{ 0 };
+//    Slope lowCutSlope{ Slope::Slope_12 }, highCutSlope{ Slope::Slope_12 };
+//
+//
+//};
+
+
+
+//ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& apvts);
+
 
 
 class MidiMarkovProcessor : public juce::AudioProcessor
@@ -48,6 +78,11 @@ public:
     //==============================================================================
     void getStateInformation(juce::MemoryBlock& destData) override;
     void setStateInformation(const void* data, int sizeInBytes) override;
+
+    ////apvts expects us to provide the list of all parameters when it is created, so we'll need a function that provide that for us
+    //static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
+    //juce::AudioProcessorValueTreeState apvts{ *this, nullptr, "Parameters", createParameterLayout()};
+
     /** add some midi to be played at the sent sample offset*/
     void addMidi(juce::MidiMessage msg, int sampleOffset);
 
@@ -110,7 +145,15 @@ private:
      */
     static std::vector<int> markovStateToNotes(const std::string& notesStr);
 
+    /*using Filter = juce::dsp::IIR::Filter<float>;
 
+    using CutFilter = juce::dsp::ProcessorChain<Filter, Filter>;
+
+    using MonoChain = juce::dsp::ProcessorChain<CutFilter, CutFilter>;
+
+    MonoChain leftChain, rightChain;
+
+    */
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MidiMarkovProcessor)

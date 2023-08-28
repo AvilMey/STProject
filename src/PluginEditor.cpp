@@ -12,15 +12,20 @@ MidiMarkovEditor::MidiMarkovEditor(MidiMarkovProcessor& p) : AudioProcessorEdito
     // editor's size to whatever you need it to be.
     setSize(700, 350);
 
+
     // listen to the mini piano
     kbdState.addListener(this);
     addAndMakeVisible(miniPianoKbd);
 
     resetButton.setButtonText("Reset model");
+    resetButton.setColour(0x1000100, juce::Colours::white);
+    resetButton.setColour(0x1000102, juce::Colours::black);
     addAndMakeVisible(resetButton);
     resetButton.addListener(this);
 
     isLearningButton.setButtonText("Machine is learning");
+    isLearningButton.setColour(0x1000100, juce::Colours::white);
+    isLearningButton.setColour(0x1000102, juce::Colours::black);
     addAndMakeVisible(isLearningButton);
     isLearningButton.addListener(this);
 }
@@ -33,11 +38,12 @@ MidiMarkovEditor::~MidiMarkovEditor()
 void MidiMarkovEditor::paint(juce::Graphics& g)
 {
     // (Our component is opaque, so we must completely fill the background with a solid colour)
-    g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
+    //g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
+    g.fillAll(juce::Colours::black);
 
     g.setColour(juce::Colours::white);
     g.setFont(15.0f);
-    g.drawFittedText("v0.001", getLocalBounds(), juce::Justification::centred, 1);
+    g.drawFittedText("Flamenco Rhythm Generator", getLocalBounds(), juce::Justification::centred, 1);
 }
 
 void MidiMarkovEditor::resized()
@@ -55,6 +61,7 @@ void MidiMarkovEditor::resized()
     resetButton.setBounds(0, rowHeight * row, colWidth, rowHeight);
     col++;
     isLearningButton.setBounds(col * colWidth, rowHeight * row, colWidth, rowHeight);
+    //Aqui la posicion de los botones
 
 }
 
@@ -74,10 +81,15 @@ void MidiMarkovEditor::buttonClicked(juce::Button* btn)
             this->audioProcessor.stopLearning();
             // make the button off
             isLearningButton.setButtonText("Not learning");
+            isLearningButton.setColour(0x1000100, juce::Colours::black);
+            isLearningButton.setColour(0x1000102, juce::Colours::white);
         }
         else {
             this->audioProcessor.startLearning();
             isLearningButton.setButtonText("Machine is learning");
+            isLearningButton.setColour(0x1000100, juce::Colours::white);
+            isLearningButton.setColour(0x1000102, juce::Colours::black);
+
         }
     }
 }
